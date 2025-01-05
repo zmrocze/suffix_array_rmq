@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 unzip3 = "=1.0.0"
 num-bigint = "0.4.6"
+rand = "0.8.5"
