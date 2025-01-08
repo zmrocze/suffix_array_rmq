@@ -1,8 +1,8 @@
 use std::vec;
 
 pub struct SA {
-  _sa: Vec<usize>,
-  sa_inverse: Vec<usize>,
+  pub sa: Vec<usize>,
+  pub sa_inverse: Vec<usize>,
 }
 
 impl SA {
@@ -12,11 +12,11 @@ impl SA {
   pub fn create_suffix_array(a: &Vec<usize>) -> Self {
     let mut s: Vec<usize> = (0 .. a.len()).collect();
     s.sort_by_key(|&i| &a[i..]);
-    let mut sa_inverse: Vec<usize> = Vec::with_capacity(a.len());
+    let mut sa_inverse: Vec<usize> = vec![0; a.len()];
     s.iter().enumerate().for_each(|(i, x)| sa_inverse[*x] = i);
     SA {
-      _sa: vec![0],
-      sa_inverse: vec![0],
+      sa: s,
+      sa_inverse,
     }
   }
 
@@ -35,8 +35,8 @@ pub fn lcp(a: &Vec<usize>, sa: &SA) -> Vec<usize> {
     if sa.sa_inverse[i] == n - 1 {
       lcp_acc = 0; // lcp[n-1] is unused really
     } else {
-      let j = sa._sa[sa.sa_inverse[i]+1];
-      while a[i+lcp_acc] == a[j+lcp_acc] && i+lcp_acc < n && j+lcp_acc < n {
+      let j = sa.sa[sa.sa_inverse[i]+1];
+      while i+lcp_acc < n && j+lcp_acc < n && a[i+lcp_acc] == a[j+lcp_acc] {
         lcp_acc += 1;
       }
     }
@@ -73,16 +73,17 @@ impl BinTree {
       let (x, entering)= stack.pop().unwrap(); 
       euler.push(x);
       if entering {
+        // println!("entering {}", x);
         first_occ[x] = euler.len()-1;
-        if let Some(left) = self.lefts[x] {
-          stack.push((left, true));
-          depth[left] = depth[x] + 1;
-          stack.push((x, false));
-        }
         if let Some(right) = self.rights[x] {
+          stack.push((x, false));
           stack.push((right, true));
           depth[right] = depth[x] + 1;
+        }
+        if let Some(left) = self.lefts[x] {
           stack.push((x, false));
+          stack.push((left, true));
+          depth[left] = depth[x] + 1;
         }
       }
     }
@@ -90,27 +91,30 @@ impl BinTree {
   }
 }
 
-/// Cartesian tree of a: Bin(minimum in a, cartesian tree of a[0..min_index), cartesian tree of a[min_index+1..n))
-/// O(n) time, O(1) extra space 
-pub fn cartesian_tree(a: &Vec<usize>) -> BinTree {
+/// Cartesian tree on 0..n by keys: Bin(minimum in a, cartesian tree of a[0..min_index), cartesian tree of a[min_index+1..n))
+/// O(n) time, O(1) extra space
+pub fn cartesian_tree(keys: &Vec<usize>) -> BinTree {
   // go from left to right, putting the new node either as new root or somewhere along the rightmost path
-  let n = a.len();
-  let mut parent = vec![0; n];
+  // note: using 0..n as nodes, but keys[xs[i]] as corresponding keys, then putting xs[i] in the final result also
+  let n = keys.len();
+  let mut parent: Vec<usize> = vec![0; n];
   let mut is_left = vec![true; n];
   let mut root = 0;
   let mut rightmost = 0;
   for i in 1..n {
-    if a[i] <= a[root] {
+    // let x = xs[i];
+    if keys[i] <= keys[root] {
       parent[root] = i;
       root = i;
       rightmost = root;
     } else {
+      println!("rightmost: {}", rightmost);
       if rightmost == root {
         // no right kid in root
         parent[i] = root;
         is_left[i] = false;
       } else {
-        while a[parent[rightmost]] >= a[i]  { // surely false when we parent[rightmost] = root
+        while keys[parent[rightmost]] >= keys[i]  { // surely false when we parent[rightmost] = root
           rightmost = parent[rightmost];
         }
         parent[i] = parent[rightmost];
@@ -126,12 +130,15 @@ pub fn cartesian_tree(a: &Vec<usize>) -> BinTree {
   let mut lefts = vec![None; n];
   let mut rights = vec![None; n];
   for i in 0..n {
-    if is_left[i] {
-      lefts[parent[i]] = Some(i);
-    } else {
-      rights[parent[i]] = Some(i);
+    if i != root {
+      if is_left[i] {
+        lefts[parent[i]] = Some(i);
+      } else {
+        rights[parent[i]] = Some(i);
+      }
     }
   }
+  println!("{:?}, {:?}, {:?}, {:?}", &keys, parent, is_left, rightmost);
   BinTree {
     root: root,
     lefts: lefts,
