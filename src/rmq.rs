@@ -5,16 +5,18 @@ use std::{iter, vec};
 use num_bigint::BigUint;
 use unzip3::Unzip3;
 
+/// Structure for range minimum queries on a sequence of numbers.
+/// O(n) space, O(1) query time.
 // ranges inclusive for both ends
 pub struct RMQ {
   n : usize,
-  b : usize,
-  m : usize,
+  b : usize, // ~ log n
+  m : usize, // n / b
   logm : usize,
-  ranges: Vec<Vec<usize>>,
-  starts: Vec<usize>,
-  difftypes: Vec<usize>,
-  answers: Vec<Vec<usize>>,
+  ranges: Vec<Vec<usize>>, // answers for 2^k sized ranges
+  starts: Vec<usize>,    // values for first elements of each block
+  difftypes: Vec<usize>, // block types
+  answers: Vec<Vec<usize>>, // precomputed answers for each block type
 }
 
 /// Defines how to get an index for a given range WITHIN a block
@@ -56,16 +58,24 @@ pub fn create_rmq( xs : &Vec<usize>, keys: &Vec<usize>  ) -> RMQ {
   let n = xs.len();
   let c = 4;
   let b = (n as f64).log2().ceil() as usize / c;
+  println!("b: {:?}, c: {:?}, n: {:?}, xs: {:?}", b, c, n, xs);
   // chunk into b sized blocks, extend last block to match
-  let chunks = xs.chunks_exact(b);
-  let last = {
+  let chunks: Box<dyn Iterator<Item = Vec<usize>>> = {
+    let chunks = xs.chunks_exact(b);
     let remainder = chunks.remainder();
-    let z = remainder.last().unwrap();
-    let mut last: Vec<usize> = remainder.iter().map(Clone::clone).collect();
-    last.extend(iter::repeat(z).take(b - last.len()));
-    last
+    let chunks = chunks.map(|c| Vec::from(c));
+    if ! remainder.is_empty() {
+      let z = remainder.last().unwrap();
+      let last = {
+        let mut last: Vec<usize> = remainder.iter().map(Clone::clone).collect();
+        last.extend(iter::repeat(z).take(b - last.len()));
+        last
+      };
+      Box::new(chunks.chain(iter::once(last)))
+    } else {
+      Box::new(chunks)
+    }
   };
-  let chunks = chunks.chain(iter::once(last.as_slice()));
 
   let difftype_index = |diffs: &Vec<i8>| {
     diffs.iter().fold(0, |acc, diff| acc * 3 + ((diff + 1) as usize))
@@ -87,7 +97,7 @@ pub fn create_rmq( xs : &Vec<usize>, keys: &Vec<usize>  ) -> RMQ {
   let logm = (m as f64).log2().ceil() as usize;
 
   // calculate ranges bottom up
-  let mut ranges = vec![vec![0, m]; logm];
+  let mut ranges = vec![vec![0; m]; logm];
   for i in 0..m { ranges[0][i] = mins[i] }
   for i in 1..logm {
     for j in 0..m {
@@ -98,10 +108,11 @@ pub fn create_rmq( xs : &Vec<usize>, keys: &Vec<usize>  ) -> RMQ {
 
   // precompute answers for within block queries
   let r: usize = (3 as usize).pow(b as u32); // "Expecting <number of distinct blocks (somesmallpoly(n)> to fit in usize")
-  let s = b * b / 2;
-  let mut answers = vec![vec![0; s]; r];
+  let s = (b+1) * b / 2; // see query_index
+  let mut answers = vec![vec![usize::MAX; s]; r];
   let mut done = vec![false; r]; 
   let mut difftype_indices = vec![0; m];
+  println!("r : {}, s : {}, b : {}", r, s, b); 
   for i in 0..m {
     let dt = &difftypes[i]; 
     let dt_index = difftype_index(dt);
@@ -115,6 +126,7 @@ pub fn create_rmq( xs : &Vec<usize>, keys: &Vec<usize>  ) -> RMQ {
             a += dt[z] as usize;
             min = min.min(a);
           }
+          println!("answerslen: {}, answers[0].len: {}, quer: {}, dt_index: {:?}, x: {:?}, y: {:?}, min: {:?}", answers.len(), answers[0].len(), query_index(x, y), dt_index, x, y, min);
           answers[dt_index][query_index(x, y)] = min;
         }
       }

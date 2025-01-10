@@ -36,7 +36,12 @@ pub struct SARMQ {
 impl SARMQ {
   /// Returns the length of the longest common prefix of the suffixes starting at the given indices.
   pub fn query(&self, i: usize, j: usize) -> usize {
+    println!("querying {:?} {:?}", i, j);
     let (ii, jj) = (self.sa_inverse[i], self.sa_inverse[j]);
+    println!("pi_inv[i] pi_inv[j] {:?} {:?}. what means the suffixes i j are at these places in the sorted order", ii, jj);
+    println!("indices in euler walk: {:?}, {:?}", self.euler_walk_first_occ[ii], self.euler_walk_first_occ[jj]); 
+    println!("lcp: {:?}", self.lcp);
+    println!("rmq starts: {:?}", self.rmq);
     let argmin = self.rmq.query(self.euler_walk_first_occ[ii], self.euler_walk_first_occ[jj]);
     self.lcp[argmin]
   }
