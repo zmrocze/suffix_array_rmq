@@ -73,7 +73,6 @@ impl BinTree {
       let (x, entering)= stack.pop().unwrap(); 
       euler.push(x);
       if entering {
-        // println!("entering {}", x);
         first_occ[x] = euler.len()-1;
         if let Some(right) = self.rights[x] {
           stack.push((x, false));
