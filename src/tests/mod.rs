@@ -9,7 +9,7 @@ pub fn random_query_random_sequence( n : usize, key_range: Option<usize> ) {
   let key_range = key_range.unwrap_or(n);
   let mut rng = rand::thread_rng();
   let xs = {
-    let mut xs: Vec<usize> = (0..n).collect();
+    let mut xs: Vec<usize> = vec![];
     for _ in 0..n {
       xs.push(rng.gen_range(0..key_range))
     }
@@ -18,14 +18,15 @@ pub fn random_query_random_sequence( n : usize, key_range: Option<usize> ) {
   
   let rmq = create_sarmq(&xs);
   println!("created sarmq");
+  println!("xs={:?}", xs);
   // naive
   let i = rng.gen_range(0..n);
-  let j = rng.gen_range(0..n);
+  let j = rng.gen_range(i..n);
   let mut k = 0;
   loop {
+    // println!("i, j, k, n: {:?} {:?} {:?} {:?}, i+k<n={:?}, j+k<n={:?}, xs[i+k]={:?}, xs[j+k]={:?}", i, j, k, n, i+k < n, j+k < n, xs[i+k], xs[j+k]);
     if i+k < n && j+k < n && xs[i+k] == xs[j+k] {
       k += 1;
-      continue;
     } else {
       break;
     }

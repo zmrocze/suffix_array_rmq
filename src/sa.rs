@@ -48,9 +48,9 @@ pub fn lcp(a: &Vec<usize>, sa: &SA) -> Vec<usize> {
 
 /// Bin tree in array form.
 pub struct BinTree {
-  root : usize,
-  lefts : Vec<Option<usize>>,
-  rights : Vec<Option<usize>>,
+  pub root : usize,
+  pub lefts : Vec<Option<usize>>,
+  pub rights : Vec<Option<usize>>,
 }
 
 /// Traversal order on a binary tree where a node is visited up to three times, when entering and then when re-entering from its kids
@@ -107,12 +107,11 @@ pub fn cartesian_tree(keys: &Vec<usize>) -> BinTree {
       root = i;
       rightmost = root;
     } else {
-      println!("rightmost: {}", rightmost);
       if rightmost == root {
         // no right kid in root
         parent[i] = root;
         is_left[i] = false;
-      } else {
+      } else if keys[rightmost] >= keys[i] {
         while keys[parent[rightmost]] >= keys[i]  { // surely false when we parent[rightmost] = root
           rightmost = parent[rightmost];
         }
@@ -120,6 +119,9 @@ pub fn cartesian_tree(keys: &Vec<usize>) -> BinTree {
         is_left[i] = false;
         parent[rightmost] = i;
         is_left[rightmost] = true;
+      } else {
+        parent[i] = rightmost;
+        is_left[i] = false;
       }
       rightmost = i;
     }
@@ -137,7 +139,6 @@ pub fn cartesian_tree(keys: &Vec<usize>) -> BinTree {
       }
     }
   }
-  println!("{:?}, {:?}, {:?}, {:?}", &keys, parent, is_left, rightmost);
   BinTree {
     root: root,
     lefts: lefts,
