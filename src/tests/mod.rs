@@ -16,15 +16,11 @@ pub fn random_query_random_sequence( n : usize, key_range: Option<usize> ) {
     xs
   };
   
-  let rmq = create_sarmq(&xs);
-  println!("created sarmq");
-  println!("xs={:?}", xs);
   // naive
   let i = rng.gen_range(0..n);
   let j = rng.gen_range(i..n);
   let mut k = 0;
   loop {
-    // println!("i, j, k, n: {:?} {:?} {:?} {:?}, i+k<n={:?}, j+k<n={:?}, xs[i+k]={:?}, xs[j+k]={:?}", i, j, k, n, i+k < n, j+k < n, xs[i+k], xs[j+k]);
     if i+k < n && j+k < n && xs[i+k] == xs[j+k] {
       k += 1;
     } else {
@@ -32,6 +28,7 @@ pub fn random_query_random_sequence( n : usize, key_range: Option<usize> ) {
     }
   }
 
+  let rmq = create_sarmq(&xs);
   assert_eq!(rmq.query(i, j), k);
   
 }
@@ -39,22 +36,22 @@ pub fn random_query_random_sequence( n : usize, key_range: Option<usize> ) {
 #[test]
 pub fn test_small_n_binary() {
   random_query_random_sequence(10, Some(2));
-  random_query_random_sequence(1, Some(2));
+  random_query_random_sequence(1, Some(1));
   random_query_random_sequence(20, Some(2));
   random_query_random_sequence(50, Some(2));
   random_query_random_sequence(250, Some(2));
   random_query_random_sequence(10, Some(2));
-  random_query_random_sequence(1, Some(2));
+  random_query_random_sequence(1, Some(1));
   random_query_random_sequence(20, Some(2));
   random_query_random_sequence(50, Some(2));
   random_query_random_sequence(250, Some(2));
   random_query_random_sequence(10, Some(2));
-  random_query_random_sequence(1, Some(2));
+  random_query_random_sequence(1, Some(1));
   random_query_random_sequence(20, Some(2));
   random_query_random_sequence(50, Some(2));
   random_query_random_sequence(250, Some(2));
   random_query_random_sequence(10, Some(2));
-  random_query_random_sequence(1, Some(2));
+  random_query_random_sequence(1, Some(1));
   random_query_random_sequence(20, Some(2));
   random_query_random_sequence(50, Some(2));
   random_query_random_sequence(250, Some(2));
@@ -108,10 +105,10 @@ pub fn test_big_n() {
 
 #[test]
 pub fn test_big_n_binary() {
-  random_query_random_sequence(1000000, Some(2));
-  random_query_random_sequence(10000000, Some(2));
-  random_query_random_sequence(00000000, Some(2));
-  random_query_random_sequence(000000000, Some(2));
+  random_query_random_sequence(1000001, Some(2));
+  random_query_random_sequence(10000001, Some(2));
+  random_query_random_sequence(10000001, Some(2));
+  random_query_random_sequence(100000001, Some(2));
   random_query_random_sequence(1000000, Some(2));
   random_query_random_sequence(10000000, Some(2));
   random_query_random_sequence(10000000, Some(2));

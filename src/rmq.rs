@@ -16,12 +16,6 @@ impl<A : Ord, B> Min<A, B> {
   pub fn new(min: A, argmin: B) -> Self {
     Min { min, argmin }
   }
-  // pub fn update_min(&mut self, new_min: usize, new_argmin: usize) {
-  //   if new_min < self.min {
-  //     self.min = new_min;
-  //     self.argmin = new_argmin;
-  //   }
-  // }
   pub fn min(self, other: Self) -> Self {
     if self.min > other.min {
       other
@@ -61,7 +55,6 @@ impl RMQ {
   /// argminimum of the range [left, right]
   pub fn query(&self, left : usize, right : usize) -> usize {
     assert!(left <= right, "Start of range is not on the left of the end of the range.");
-    println!("[{:?}, {:?}], b={:?}", left, right, self.b);
     let l_block = left / self.b; // starts in it
     let r_block = right / self.b; // ends in it 
     if l_block >= r_block {
@@ -70,7 +63,6 @@ impl RMQ {
       let l = left % self.b;
       let r = right % self.b;
       let min = self.block_answers[self.block_types[r_block]][query_index(l, r)];
-      println!("within block {:?}: [{:?}, {:?}]", r_block, l, r);
       return r_block * self.b + min.argmin;
     } else {
       // across blocks: |left scraps|RANGE OF BLOCKS|right scraps|
@@ -79,7 +71,6 @@ impl RMQ {
       let range_min = {
         let log = (((r_block - (l_block+1)) as f64).log2() - 1.0).ceil() as usize;
         if r_block > 1 + l_block {
-          // println!("[{:?} {:?}] of len {:?} = [{:?} {:?}] + [{:?} {:?}] of lens 2^{:?}", l_block + 1, r_block - 1 , r_block - (l_block+1), l_block + 1, l_block + (1<<log), r_block - (1<<log), r_block - 1, log);
           self.ranges_answers[log][l_block+1].min( self.ranges_answers[log][r_block - (1<<log)] )
         } else {
           Min::default()
@@ -89,7 +80,6 @@ impl RMQ {
       let right_scraps = self.block_answers[self.block_types[r_block]][query_index(0, right % self.b)];
       let left_scraps = Min::new(((self.block_firsts[l_block] as i64) + left_scraps.min) as usize, left_scraps.argmin + l_block * self.b);
       let right_scraps = Min::new(((self.block_firsts[r_block] as i64) + right_scraps.min) as usize, right_scraps.argmin + r_block * self.b);
-      // println!("left_scraps: {:?}, range_min: {:?} , right_scraps: {:?}", left_scraps, range_min, right_scraps);
       left_scraps.min(range_min).min(right_scraps).argmin
     }
   }
@@ -97,7 +87,7 @@ impl RMQ {
   pub fn create_rmq(values: &Vec<usize>  ) -> RMQ {
 
     let n = values.len();
-    let c = 4;
+    let c = 7;
     let b = 1.max( (n as f64).log2().ceil() as usize / c );
     // chunk into b sized blocks, extend last block to match
     let vals = values.clone(); // note: would work with 0..n as iterator but with #![feature(iter_array_chunks)]
@@ -122,8 +112,6 @@ impl RMQ {
       diffs.iter().fold(0, |acc, diff| acc * 3 + ((diff + 1) as usize))
     };
 
-
-
     let (block_mins, block_firsts, block_difftypes): (Vec<Min<usize, usize>>, Vec<usize>, Vec<Vec<i8>>) = chunks.map(|chunk| {
       let min = chunk.iter().enumerate().map(|(i, min)| Min::new(*min, i))
         .fold(Min::default(), Min::min);
@@ -140,24 +128,13 @@ impl RMQ {
     }).unzip3();
     let m = block_mins.len(); // n / b
     let logm = ((m as f64).log2().ceil() as usize).max(1 as usize);
-    println!("m: {:?}, logm: {:?}", m , logm);
     
     let pow2 = |x: usize| 1 << x;
     // calculate ranges bottom up
     let mut range_answers = vec![vec![Min::default(); m]; logm];
-    // let mut ranges_argmins = vec![vec![0; m]; logm];
-    for i in 0..m { println!("blockmin at [{:?}] is {:?}", i, Min::new(block_mins[i].min, i * b + block_mins[i].argmin)); range_answers[0][i] = Min::new(block_mins[i].min, i * b + block_mins[i].argmin) }
+    for i in 0..m { range_answers[0][i] = Min::new(block_mins[i].min, i * b + block_mins[i].argmin) }
     for i in 1..logm {
-      // println!("2<<0={:?}", 1<<(0));
-      // println!("2<<1={:?}", 1<<(1));
       for j in 0..m {
-        // min of two smaller ranges_mins
-        // println!("i={:?}, j={:?}", i, j);
-        // if ( i <= 0 ) {
-        //   println!("i=0")
-        // } else {
-        //   // println!("[{:?} {:?}] of len 2^{:?} = [{:?} {:?}] + [{:?} {:?}] of len 2^{:?}", j, j+ (1<<i) - 1 , i , j, j + (1<<(i-1)) - 1, j + (1<<(i-1)), j + (1<<(i-1)) + (1<<(i-1)) - 1, i-1);
-        // }
         range_answers[i][j] = range_answers[i-1][j].min( *range_answers[i-1].get( j + pow2(i-1) ).unwrap_or(&Min::default()) );
       }
     }
@@ -190,10 +167,7 @@ impl RMQ {
     }
   
     RMQ {
-      // n : n,
       b : b,
-      // m: m,
-      // logm : logm,
       ranges_answers: range_answers,
       block_firsts: block_firsts,
       block_types: block_types,

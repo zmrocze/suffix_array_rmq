@@ -1,4 +1,4 @@
-use std::vec;
+use std::{collections::HashSet, iter::repeat, slice::Chunks, vec};
 
 pub struct SA {
   pub sa: Vec<usize>,
@@ -8,10 +8,13 @@ pub struct SA {
 impl SA {
 
   /// Calculates the lexicographical order on suffixes of a.
-  /// O(n*logn) time and space.
+  /// O(n) time and space.
+  /// Assumes integers in 0..n range.
   pub fn create_suffix_array(a: &Vec<usize>) -> Self {
-    let mut s: Vec<usize> = (0 .. a.len()).collect();
-    s.sort_by_key(|&i| &a[i..]);
+    // let mut s: Vec<usize> = (0 .. a.len()).collect();
+    // s.sort_by_key(|&i| &a[i..]);
+    let s = sa(a);
+    // assert_eq!(ss, s);
     let mut sa_inverse: Vec<usize> = vec![0; a.len()];
     s.iter().enumerate().for_each(|(i, x)| sa_inverse[*x] = i);
     SA {
@@ -20,6 +23,130 @@ impl SA {
     }
   }
 
+}
+
+/// sort suffixes of xs in O(n)
+/// assumes xs contains numbers in range 0..n
+fn sa(xs : &Vec<usize>) -> Vec<usize> {
+  // sort recursively suffixes of triplets mod3=0 and mod3=1,
+  // then merge with mod3=2 suffixes
+  let n = xs.len();
+
+  let c= 10;
+  if n < c {
+    let mut r: Vec<usize> = (0..n).collect();
+    r.sort_by_key(|&i| &xs[i..]);
+    return r;
+  }
+
+  fn sort_triples(n : usize, triples : &Vec<(usize, usize, usize)>) -> (Vec<usize>, Vec<usize>) {
+    let phase = |xs : Vec<usize>, pi : Box<dyn Fn((usize, usize, usize)) -> usize>| {
+      let mut vs = vec![ vec![] ; n];
+      for i in xs {
+        vs[pi(triples[i])].push(i);
+      }
+      vs.concat()
+    };
+    let ph2 = phase((0..(triples.len())).collect(), Box::new(|x| x.2));
+    let ph1 = phase(ph2, Box::new(|x| x.1));
+    let ph0 = phase(ph1, Box::new(|x| x.0));
+    // now collapse equal triples
+    let mut group_id = 0;
+    let mut groups = vec![0; ph0.len()];
+    if !ph0.is_empty() {
+      groups[ph0[0]] = 0;
+      for i in 1..ph0.len() {
+        if triples[ph0[i]] != triples[ph0[i - 1]] {
+          group_id += 1;
+        }
+        groups[ph0[i]] = group_id;
+      }
+    }
+    (ph0, groups) // order, assignment (ranks but repeating for equal)
+  }
+  fn sort_tuples(n : usize, tuples : &Vec<(usize, usize)>) -> (Vec<usize>, Vec<usize>) {
+    sort_triples(n, &tuples.iter().map(|(a, b)| (*a, *b, 0)).collect::<Vec<_>>())
+  }
+  fn invert(per : &Vec<usize>) -> Vec<usize> {
+    let mut ys = vec![0; per.len()];
+    for (i, x) in per.iter().enumerate() {
+      ys[*x] = i;
+    }
+    ys
+  }
+
+  let triples : Vec<(usize, usize, usize)> = {
+    let into_triple = |c: &[usize]| {
+      let mut c = c.iter();
+      let a = *c.next().unwrap();
+      let b = *c.next().unwrap_or(&0);
+      let c = *c.next().unwrap_or(&0);
+      (a, b, c)
+    };
+    xs.chunks(3).map(into_triple)
+      .chain(
+    xs[1..].chunks(3).map(into_triple)).collect()
+  };
+
+  // need to move by 1, to use 0 as -inf in between mod3=0 and mod3=1 suffixes
+  let (_, triples) = sort_triples(n+1, &triples);
+  let mut triples = triples.iter().map(|&x| x+1).collect::<Vec<usize>>();
+  let k = n.div_ceil(3); // middle
+  triples.insert(k, 0); // insert a "#" splitter
+
+  let mod01: Vec<usize> = sa(&triples);
+
+  let ranks = invert(&mod01);
+  let index = |i: usize| { // i-th suffix in sorted order
+    if i % 3 == 0 {i/3} else {k + 1 + (i-1)/3}
+  };
+  let rev_index = |j: usize| { // j-th sorted suffix
+    if j < k {3*j} else {3*(j-k-1) + 1}
+  };
+  let get = |xs : &Vec<usize>, i: usize| {xs.get(i).map(|&r|r+1).unwrap_or(0)};
+  let rank = |i: usize| {get(&ranks, index(i))};
+  // compare suffix l-th with r-th where l % 3 = 2
+  let cmp = |l:usize,r:usize| {
+    // empty =0, nonempty >=1
+    let l0 = get(&xs, l);
+    let r0 = get(&xs, r);
+    if r % 3 == 0 || r % 3 == 2 {
+      // TODO: here will be error no? when the suffix is shorter
+      (l0, rank(l+1)).le(&(r0, rank(r+1)))
+    } else { // r % 3 = 1
+      let l1 = get(xs, l+1);
+      let r1 = get(xs, r+1);
+      (l0, l1, rank(l+2)).le(&(r0, r1, rank(r+2)))
+    }
+  };
+
+  // sorting mod=2 suffixes
+  let (mod2, _)= sort_tuples(n+1,&(0..((n-2).div_ceil(3))).map(|i| (xs[3*i+2], rank(3*i+3))).collect::<Vec<(usize, usize)>>());
+
+  // merging
+  let mut res = vec![];
+  let mut mod2 = mod2.iter().map(|i| 3*i + 2).collect::<Vec<usize>>();
+  let mut mod01 = mod01.into_iter().filter_map(|i| if i != k {Some(rev_index(i))} else {None}).collect::<Vec<usize>>();
+  mod2.reverse();
+  mod01.reverse();
+  while ! mod2.is_empty() && ! mod01.is_empty() {
+    let l = *mod2.last().unwrap();
+    let r = *mod01.last().unwrap();
+    // assert!(l < n && r < n, "indices within range: {:?} {:?}", l, r);
+    if cmp(l, r) {
+      res.push(l);
+      mod2.pop();
+    } else {
+      res.push(r);
+      mod01.pop();
+    }
+  }
+  mod2.reverse();
+  mod01.reverse();
+  res.extend(mod2.into_iter());
+  res.extend(mod01.into_iter());
+  
+  return res;
 }
 
 /// Calculates array lcp, st. lcp(i) = lcp(SA[i],SA[i+1]).
