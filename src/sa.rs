@@ -1,4 +1,4 @@
-use std::{collections::HashSet, iter::repeat, slice::Chunks, vec};
+use std::vec;
 
 pub struct SA {
   pub sa: Vec<usize>,
@@ -62,7 +62,7 @@ fn sa(xs : &Vec<usize>) -> Vec<usize> {
         groups[ph0[i]] = group_id;
       }
     }
-    (ph0, groups) // order, assignment (ranks but repeating for equal)
+    (ph0, groups) // (order, assignment (ranks but repeating for equal))
   }
   fn sort_tuples(n : usize, tuples : &Vec<(usize, usize)>) -> (Vec<usize>, Vec<usize>) {
     sort_triples(n, &tuples.iter().map(|(a, b)| (*a, *b, 0)).collect::<Vec<_>>())
@@ -111,7 +111,6 @@ fn sa(xs : &Vec<usize>) -> Vec<usize> {
     let l0 = get(&xs, l);
     let r0 = get(&xs, r);
     if r % 3 == 0 || r % 3 == 2 {
-      // TODO: here will be error no? when the suffix is shorter
       (l0, rank(l+1)).le(&(r0, rank(r+1)))
     } else { // r % 3 = 1
       let l1 = get(xs, l+1);

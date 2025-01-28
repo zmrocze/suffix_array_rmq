@@ -3,7 +3,6 @@
 use std::{iter, vec};
 
 use num::Bounded;
-use num_bigint::BigUint;
 use unzip3::Unzip3;
 
 #[derive(Debug, Clone, Copy)]

@@ -172,7 +172,6 @@ name = "sa_rmq"
 version = "0.1.0"
 dependencies = [
  "num",
- "num-bigint",
  "rand",
  "unzip3",
 ]

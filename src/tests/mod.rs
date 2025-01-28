@@ -5,13 +5,13 @@ use crate::create_sarmq;
 use rand::Rng;
 
 // #[test]
-pub fn random_query_random_sequence( n : usize, key_range: Option<usize> ) {
-  let key_range = key_range.unwrap_or(n);
+fn random_query_random_sequence( n : usize, alfabet_range: Option<usize> ) {
+  let alfabet_range = alfabet_range.unwrap_or(n);
   let mut rng = rand::thread_rng();
   let xs = {
     let mut xs: Vec<usize> = vec![];
     for _ in 0..n {
-      xs.push(rng.gen_range(0..key_range))
+      xs.push(rng.gen_range(0..alfabet_range))
     }
     xs
   };
@@ -89,6 +89,18 @@ pub fn test_medium_n() {
   random_query_random_sequence(1000, Some(100));
   random_query_random_sequence(10000, Some(100));
   random_query_random_sequence(100000, Some(100));
+}
+
+#[test]
+pub fn test_mediumbig_n() {
+  random_query_random_sequence(1000000, None);
+  random_query_random_sequence(1000001, Some(3));
+  random_query_random_sequence(1000002, Some(5));
+  random_query_random_sequence(1000003, Some(1000));
+  random_query_random_sequence(1000004, Some(4));
+  random_query_random_sequence(1000005, Some(7));
+  random_query_random_sequence(1000006, Some(10000));
+  random_query_random_sequence(1000007, Some(10));
 }
 
 #[test]
